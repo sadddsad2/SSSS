@@ -126,7 +126,7 @@ jobs:
       if: steps.check_url_status.outputs.status != '200'
       env:
         GT_PW: ${{ secrets.GT_PW }}
-        ENVSET: ${{ secrets.ENVSETL }}
+        ENVSET: ${{ secrets.ENVSET }}
         DOCKER: ${{ secrets.DOCKER }}
         PYTHONPATH: $PYTHONPATH:$(pwd)
       run: |
