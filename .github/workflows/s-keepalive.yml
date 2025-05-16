@@ -36,16 +36,16 @@ jobs:
       id: cache-cookies-restore
       uses: actions/cache/restore@v3
       with:
-        path: google_cookies.json
-        key: google_cookies-restore-attempt-${{ runner.os }}
+        path: sliplane_cookies.json
+        key: sliplane_cookies-restore-attempt-${{ runner.os }}
         restore-keys: |
-          google_cookies-
+          sliplane_cookies-
     
     - name: Check if cache was found
       if: steps.check_url_status.outputs.status != '200'
       id: check-cache
       run: |
-        if [ -f "google_cookies.json" ]; then
+        if [ -f "sliplane_cookies.json" ]; then
           echo "CACHE_HIT=true" >> $GITHUB_OUTPUT
           echo "Using cached cookies file"
         else
@@ -53,14 +53,14 @@ jobs:
           echo "No cached cookies found"
         fi
     
-    - name: Download Google Cookies
+    - name: Download sliplane_cookies
       if: steps.check-cache.outputs.CACHE_HIT != 'true' && steps.check_url_status.outputs.status != '200'
       run: |
-        curl -s -L "${{ secrets.COOK_URL }}" -o google_cookies.json
-        if [ -f google_cookies.json ]; then
-          echo "Downloaded google_cookies.json successfully"
+        curl -s -L "${{ secrets.COOK_URL }}" -o sliplane_cookies.json
+        if [ -f sliplane_cookies.json ]; then
+          echo "Downloaded sliplane_cookies.json successfully"
         else
-          echo "Error: Failed to download google_cookies.json"
+          echo "Error: Failed to download sliplane_cookies.json"
           exit 1
         fi
     
@@ -150,8 +150,8 @@ jobs:
       if: steps.check_url_status.outputs.status != '200'
       uses: actions/cache/save@v3
       with:
-        path: google_cookies.json
-        key: google_cookies-${{ steps.timestamp_generator.outputs.CACHE_TIMESTAMP }}
+        path: sliplane_cookies.json
+        key: sliplane_cookies-${{ steps.timestamp_generator.outputs.CACHE_TIMESTAMP }}
         
     - name: Save pip cache
       if: steps.check_url_status.outputs.status != '200'
