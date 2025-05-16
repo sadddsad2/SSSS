@@ -1,4 +1,4 @@
-name: IDX-Keepalive
+name: s-Keepalive
 on:
   workflow_dispatch:
     inputs:
@@ -125,9 +125,9 @@ jobs:
     - name: Run Python Script
       if: steps.check_url_status.outputs.status != '200'
       env:
-        GOOGLE_PW: ${{ secrets.GOOGLE_PW }}
-        APP_URL: ${{ secrets.APP_URL }}
-        WEB_URL: ${{ secrets.WEB_URL }}
+        GT_PW: ${{ secrets.GT_PW }}
+        ENVSET: ${{ secrets.ENVSETL }}
+        DOCKER: ${{ secrets.DOCKER }}
         PYTHONPATH: $PYTHONPATH:$(pwd)
       run: |
         # Print Python environment info for debugging
