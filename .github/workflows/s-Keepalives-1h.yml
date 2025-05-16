@@ -2,7 +2,6 @@ name: s-Keepalive 每小时
 on:
   schedule:
     # Beijing time is UTC+8, schedule in UTC
-    # Run at 4:00 北京时间
     - cron: '0 * * * *'
   # Manual trigger option
   workflow_dispatch:
@@ -116,7 +115,7 @@ jobs:
         python -m pip list | grep playwright
         
         # Run the script with explicit Python path
-        python main.py
+        python main2.py
         
     - name: Get current timestamp for cookie cache key
       id: timestamp_generator
