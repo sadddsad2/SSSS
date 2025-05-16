@@ -1,9 +1,9 @@
-name: IDX-Keepalive 2小时
+name: s-Keepalive 每小时
 on:
   schedule:
     # Beijing time is UTC+8, schedule in UTC
-    # Run at 6:00, 7:00 北京时间
-    - cron: '0 22,23 * * *'
+    # Run at 4:00 北京时间
+    - cron: '0 * * * *'
   # Manual trigger option
   workflow_dispatch:
 
@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-22.04
     
     steps:
+       
     - name: Checkout code
       uses: actions/checkout@v3
       
@@ -19,15 +20,15 @@ jobs:
       id: cache-cookies-restore
       uses: actions/cache/restore@v3
       with:
-        path: google_cookies.json
-        key: google_cookies-restore-attempt-${{ runner.os }}
+        path: sliplane_cookies.json
+        key: sliplane_cookies-restore-attempt-${{ runner.os }}
         restore-keys: |
-          google_cookies-
+          sliplane_cookies-
     
     - name: Check if cache was found
       id: check-cache
       run: |
-        if [ -f "google_cookies.json" ]; then
+        if [ -f "sliplane_cookies.json" ]; then
           echo "CACHE_HIT=true" >> $GITHUB_OUTPUT
           echo "Using cached cookies file"
         else
@@ -35,14 +36,14 @@ jobs:
           echo "No cached cookies found"
         fi
     
-    - name: Download Google Cookies
-      if: steps.check-cache.outputs.CACHE_HIT != 'true'
+    - name: Download sliplane_cookies
+      if: steps.check-cache.outputs.CACHE_HIT != 'true' && steps.check_url_status.outputs.status != '200'
       run: |
-        curl -s -L "${{ secrets.COOK_URL }}" -o google_cookies.json
-        if [ -f google_cookies.json ]; then
-          echo "Downloaded google_cookies.json successfully"
+        curl -s -L "${{ secrets.COOK_URL }}" -o sliplane_cookies.json
+        if [ -f sliplane_cookies.json ]; then
+          echo "Downloaded sliplane_cookies.json successfully"
         else
-          echo "Error: Failed to download google_cookies.json"
+          echo "Error: Failed to download sliplane_cookies.json"
           exit 1
         fi
     
@@ -101,9 +102,9 @@ jobs:
       
     - name: Run Python Script
       env:
-        GOOGLE_PW: ${{ secrets.GOOGLE_PW }}
-        APP_URL: ${{ secrets.APP_URL }}
-        WEB_URL: ${{ secrets.WEB_URL }}
+        GT_PW: ${{ secrets.GT_PW }}
+        ENVSET: ${{ secrets.ENVSET }}
+        DOCKER: ${{ secrets.DOCKER }}
         PYTHONPATH: $PYTHONPATH:$(pwd)
       run: |
         # Print Python environment info for debugging
@@ -115,7 +116,7 @@ jobs:
         python -m pip list | grep playwright
         
         # Run the script with explicit Python path
-        python -m main
+        python main.py
         
     - name: Get current timestamp for cookie cache key
       id: timestamp_generator
@@ -124,8 +125,8 @@ jobs:
     - name: Save cookies cache with timestamp
       uses: actions/cache/save@v3
       with:
-        path: google_cookies.json
-        key: google_cookies-${{ steps.timestamp_generator.outputs.CACHE_TIMESTAMP }}
+        path: sliplane_cookies.json
+        key: sliplane_cookies-${{ steps.timestamp_generator.outputs.CACHE_TIMESTAMP }}
         
     - name: Save pip cache
       uses: actions/cache/save@v3
@@ -138,3 +139,43 @@ jobs:
       with:
         path: ~/.cache/ms-playwright
         key: ${{ runner.os }}-playwright-${{ hashFiles('**/playwright.version') }}
+        
+  # 独立监控任务，在主任务之后运行，只在出错时发送通知
+  monitor:
+    needs: keepalive  # 这确保监控任务在主任务完成后才运行
+    runs-on: ubuntu-latest
+    if: ${{ always() }}  # 无论主任务成功还是失败，都运行这个任务
+    
+    steps:
+      - name: Check main job status
+        id: check_status
+        run: |
+          echo "Main job status: ${{ needs.keepalive.result }}"
+     
+          if [[ "${{ needs.keepalive.result }}" == "failure" || "${{ needs.keepalive.result }}" == "cancelled" ]]; then
+            echo "status=failure" >> $GITHUB_OUTPUT
+          elif [[ "${{ needs.keepalive.result }}" == "success" ]]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "status=unknown" >> $GITHUB_OUTPUT
+          fi
+      
+      # 只在出错或网站状态异常时发送通知
+      - name: Send Telegram notification on error
+        if: >-
+          steps.check_status.outputs.status == 'failure'
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_TO }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          message: |
+            ? DeepNote Keepalive 异常警报!
+            
+            ${{ steps.check_status.outputs.status == 'failure' && '工作流执行失败!' }}
+            
+            仓库: ${{ github.repository }}
+            分支: ${{ github.ref_name }}
+            主任务状态: ${{ needs.keepalive.result }}
+            
+            执行时间: ${{ github.run_started_at }}
+            查看详情: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
